@@ -1,9 +1,10 @@
-import { contractAddresses, abi } from "../constants"
-// dont export from moralis when using react
+import { contractAddresses, abi } from "../constants"//constants folder hold abi,address of contract and is managed by backend
 import { useMoralis, useWeb3Contract } from "react-moralis"
+//useMoralis hook will be used to access-  Moralis, isWeb3Enabled, chainId
 import { useEffect, useState } from "react"
 import { useNotification } from "web3uikit"
 import { ethers } from "ethers"
+import { Box, Button, Grid, Paper, Typography } from "@mui/material"
 
 
 export default function LotteryEntrance() {
@@ -11,18 +12,17 @@ export default function LotteryEntrance() {
     //Header component provides all the info about metamask to Morallis Provider 
     // and Morallis provides all the info down to other components
     const { Moralis, isWeb3Enabled, chainId: chainIdHex } = useMoralis()
-    // These get re-rendered every time due to our connect button!
     const chainId = parseInt(chainIdHex)
     // console.log(`ChainId is ${chainId}`)
     const lotteryAddress = chainId in contractAddresses ? contractAddresses[chainId][0] : null
 
     // State hooks
-    // https://stackoverflow.com/questions/58252454/react-hooks-using-usestate-vs-just-variables
     const [minContribution, setMinContribution] = useState("0")
     const [numberOfPlayers, setNumberOfPlayers] = useState("0")
     const [recentWinner, setRecentWinner] = useState("0")
+    const [lotteryBalance, setLotteryBalance] = useState("0");
 
-    const dispatch = useNotification()
+    const dispatch = useNotification()//dispatch function helps us to create a custom Notification
 
     const {
         runContractFunction: enterLottery,//used to call the contract function
@@ -42,7 +42,7 @@ export default function LotteryEntrance() {
 
     const { runContractFunction: getMinContribution } = useWeb3Contract({
         abi: abi,
-        contractAddress: lotteryAddress, // specify the networkId
+        contractAddress: lotteryAddress,
         functionName: "getMinContribution",
         params: {},
     })
@@ -60,20 +60,22 @@ export default function LotteryEntrance() {
         functionName: "getRecentWinner",
         params: {},
     })
+    const { runContractFunction: getLotteryBalance } = useWeb3Contract({
+        abi: abi,
+        contractAddress: lotteryAddress,
+        functionName: "getLotteryBalance",
+        params: {},
+    })
 
     async function updateUIValues() {
-        // Another way we could make a contract call:
-        // const options = { abi, contractAddress: lotteryAddress }
-        // const fee = await Moralis.executeFunction({
-        //     functionName: "getEntranceFee",
-        //     ...options,
-        // })
         const minContributionFromCall = (await getMinContribution()).toString()
         const numPlayersFromCall = (await getPlayersNumber()).toString()
         const recentWinnerFromCall = await getRecentWinner()
+        const lotteryBalanceFromCall = (await getLotteryBalance()).toString();
         setMinContribution(minContributionFromCall)
         setNumberOfPlayers(numPlayersFromCall)
         setRecentWinner(recentWinnerFromCall)
+        setLotteryBalance(lotteryBalanceFromCall);
     }
 
     useEffect(() => {
@@ -84,15 +86,6 @@ export default function LotteryEntrance() {
     // no list means it'll update everytime anything changes or happens
     // empty list means it'll run once after the initial rendering
     // and dependencies mean it'll run whenever those things in the list change
-
-    // An example filter for listening for events, we will learn more on this next Front end lesson
-    // const filter = {
-    //     address: lotteryAddress,
-    //     topics: [
-    //         // the name of the event, parnetheses containing the data type of each event, no spaces
-    //         utils.id("lotteryEnter(address)"),
-    //     ],
-    // }
 
     const handleNewNotification = () => {
         dispatch({
@@ -118,31 +111,111 @@ export default function LotteryEntrance() {
         <div>
 
             {lotteryAddress ? (
-                <>
-                    <button
-                        onClick={async () =>
-                            await enterLottery({
-                                // onComplete:
-                                // onError:
-                                onSuccess: handleSuccess,
-                                onError: (error) => console.log(error),
-                            })
-                        }
-                        disabled={isLoading || isFetching}
+                <Grid
+                    container
+                    direction="column"
+                    alignitems="center"
+                    justifycontent="center"
+                >
+                    <Paper
+                        elevation={0}
+                        justifycontent="center"
+                        alignitems="center"
+                        sx={{
+                            width: 800,
+                            height: 500,
+                            justifycontent: "center",
+                            alignitems: "center",
+                        }}
                     >
-                        {isLoading || isFetching ? (
-                            <div></div>
-                        ) : (
-                            "Enter lottery"
-                        )}
-                    </button>
-                    <div>Entrance Fee: {ethers.utils.formatUnits(minContribution, "ether")} ETH</div>
-                    <div>The current number of players is: {numberOfPlayers}</div>
-                    <div>The most previous winner was: {recentWinner}</div>
-                </>
+                        <Box>
+                            <Typography
+                                variant="h2"
+                                align="center"
+                                fontWeight={200}
+                                mt={4}
+                                mb={2}
+                                ml={4}
+                                p={3}
+                            >
+                                DECENTRALISED LOTTERY
+                            </Typography>
+                        </Box>
+                        <Box p={3}>
+                            <Typography
+                                align="center"
+                                variant="h4"
+                                fontWeight={200}
+                                mt={2}
+                                mb={2}
+                                ml={4}
+                            >
+                                No. of participants-
+                                <span style={{ fontWeight: "bold" }}>{numberOfPlayers}</span>
+                                <br />
+                                Winning Pool-
+                                <span style={{ fontWeight: "bold" }}>
+                                    {ethers.utils.formatUnits(lotteryBalance, "ether")} ether
+                                </span>
+                            </Typography>
+                        </Box>
+
+                        <Grid container spacing={5} ml={35}>
+                            <Grid item xs={7}>
+
+                                <Button
+                                    onClick={async () =>
+                                        await enterLottery({
+
+                                            onSuccess: handleSuccess,
+                                            onError: (error) => console.log(error),
+                                        })
+                                    }
+                                    disabled={isLoading || isFetching}
+                                    style={{
+                                        borderRadius: 3,
+
+                                        padding: "10px 10px",
+                                        fontSize: "18px",
+                                    }}
+                                    variant="contained"
+                                    loading={isLoading || isFetching}
+                                >
+                                    Click to Participate
+                                    <br></br>
+                                    (fee : {ethers.utils.formatUnits(minContribution, "ether")}{" "}
+                                    ether)
+                                </Button>
+
+                            </Grid>
+
+                        </Grid>
+                        <Box>
+                            <Typography
+                                variant="h6"
+                                align="center"
+                                fontWeight={100}
+                                mt={4}
+                                mb={2}
+                                ml={4}
+                                p={3}
+                            >
+                                {recentWinner.toString() !==
+                                    "0x0000000000000000000000000000000000000000" &&
+                                    recentWinner.toString() !== "0" ? (
+                                    <h6>Last winner is {recentWinner}</h6>
+                                ) : (
+                                    ""
+                                )}
+                            </Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
+
             ) : (
                 <div>Please connect to a supported chain </div>
             )}
         </div>
     )
 }
+
